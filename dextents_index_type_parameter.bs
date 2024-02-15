@@ -30,9 +30,14 @@ The length of each dimension (the extent) of an `mdspan` are represented by an
   dynamically:
 
 ```
-mdspan<int, 64, 64, 64> a(d);                                             // All static.
-mdspan<int, dynamic_extent, dynamic_extent, dynamic_extent> a(d, 64, 64); // All dynamic.
-mdspan<int, 64, dynamic_extent, 64> a(d, 64);                             // Mixed static and dynamic.
+// All static.
+mdspan<int, 64, 64, 64> a(d);
+
+// All dynamic.
+mdspan<int, dynamic_extent, dynamic_extent, dynamic_extent> a(d, 64, 64, 64);
+
+// Mixed static and dynamic.
+mdspan<int, 64, dynamic_extent, 64> a(d, 64);
 ```
 
 [[P2299R3]] sought to make `mdspan`s easier to work with for one of the most
