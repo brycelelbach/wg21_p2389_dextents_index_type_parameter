@@ -1,9 +1,9 @@
 <pre class='metadata'>
-Title: Fix `dextents` Index Type Parameter
-H1: Fix <code>dextents</code> Index Type Parameter
-Shortname: D2389
+Title: `dextents` Index Type Parameter
+H1: <code>dextents</code> Index Type Parameter
+Shortname: P2389
 Revision: 0
-Status: D
+Status: P
 Group: WG21
 Audience: WG21
 Editor: Bryce Adelstein Lelbach (he/him/his), NVIDIA, brycelelbach@gmail.com
