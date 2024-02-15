@@ -1,0 +1,191 @@
+<pre class='metadata'>
+Title: Fix `dextents` Index Type Parameter
+H1: Fix <code>dextents</code> Index Type Parameter
+Shortname: D2389
+Revision: 0
+Status: D
+Group: WG21
+Audience: WG21
+Editor: Bryce Adelstein Lelbach (he/him/his), NVIDIA, brycelelbach@gmail.com
+URL: https://wg21.link/P2389
+!Source: <a href="https://github.com/brycelelbach/wg21_p2389_dextents_index_type_parameter/blob/main/dextents_index_type_parameter.bs">GitHub</a>
+Issue Tracking: GitHub https://github.com/brycelelbach/wg21_p2389_dextents_index_type_parameter/issues
+Metadata Order: Editor, This Version, Source, Issue Tracking, Project, Audience
+Markup Shorthands: markdown yes
+Toggle Diffs: no
+Abstract: [[P2299R3]] added `dextents` to make it less verbose to use `mdspan` in common cases. Later, an index type parameter was added to `dextents`, which increases its verbosity, defeating its original purpose. We should fix this.
+Boilerplate: style-syntax-highlighting off
+</pre>
+
+# Background # {#background}
+
+[[P0009R18]] added `mdspan`, a non-owning multidimensional span abstraction
+  to the C++ Standard Library.
+It is excellent and flexible, allowing users to customize customize data
+  layout, access method, and index type.
+However, this flexibility often comes with verbosity.
+
+The length of each dimension (the extent) of an `mdspan` are represented by an
+  `extents` object, and each extent may be expressed either statically or
+  dynamically:
+
+```
+mdspan<int, 64, 64, 64> a(d);                                             // All static.
+mdspan<int, dynamic_extent, dynamic_extent, dynamic_extent> a(d, 64, 64); // All dynamic.
+mdspan<int, 64, dynamic_extent, 64> a(d, 64);                             // Mixed static and dynamic.
+```
+
+[[P2299R3]] sought to make `mdspan`s easier to work with for one of the most
+common cases - when all of your extents are dynamic.
+It added deduction guides to make class template argument deduction (CTAD) work
+  for `mdspan` and `extents`.
+
+```
+mdspan a(d, 64, 64); // All dynamic.
+```
+
+However, CTAD does not help in all situations.
+If you are declaring a member of a class or a parameter to a function, you
+  cannot use CTAD.
+
+```
+struct X {
+  std::mdspan<int, std::dynamic_extent, std::dynamic_extent, std::dynamic_extent> a;
+};
+
+void f(std::mdspan<int, std::dynamic_extent, std::dynamic_extent, std::dynamic_extent> a);
+```
+
+To simplify these cases, [[P2299R3]] also added `dextents<N>`, a template alias
+  for an `extents` with `N` dynamic extents.
+
+```
+template <std::size_t N>
+using dextents = /* ... */;
+
+struct X {
+  std::mdspan<int, std::dextents<3>> a;
+};
+
+void f(mdspan<int, std::dextents<3>> a);
+```
+
+# Problem # {#problem}
+
+Originally, `mdspan` and `extents` used a fixed index type (`std::size_t`).
+However, the signedness and size of the index type can have an impact on
+  performance in certain cases.
+So, [[P2553R1]] parameterized the index type used by `mdspan` and `extents`.
+
+As a part of this change, an index type template parameter was added to
+  `dextents`:
+
+```
+template <typename IndexType, std::size_t Rank>
+using dextents = /* ... */
+```
+
+This change has made using `dextents` more verbose, which is unfortunate, as
+  the main purpose of `dextents` is to make common `mdspan` usages as simple
+  as possible:
+
+```
+struct X {
+  std::mdspan<int, std::dextents<std::size_t, 3>> a;
+};
+
+void f(mdspan<int, std::dextents<std::size_t, 3>> a);
+```
+
+Index type customization is an important feature for `mdspan` to support, but it
+  is not something that most users will need to use or think about.
+If they do need it, they can always use the more verbose `extents`.
+
+# Proposed Changes # {#proposed-changes}
+
+Remove the index type parameter from `dextents` and have it default to `size_t`.
+
+MSVC's STL and LLVM's libc++ are already shipping `dextents`.
+GCC's libstdc++ is not shipping `mdspan` yet.
+
+So, modifying `dextents` would be a source-breaking change but would have no
+  ABI impact as `dextents` is a template alias.
+
+Alternatively and more practically, we could leave `dextents` alone, but add a
+  new `dims` template alias that does not have an index type parameter.
+
+<style>
+table {
+  border: none !important;
+}
+th, tr, td {
+  border: 2px solid black !important;
+}
+@media (prefers-color-scheme: dark) {
+  th, tr, td {
+    border: 2px solid white !important;
+  }
+}
+pre {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+.ins, ins, ins *, span.ins, span.ins * {
+  background-color: rgb(200, 250, 200);
+  color: rgb(0, 136, 0);
+  text-decoration: none;
+}
+.del, del, del *, span.del, span.del * {
+  background-color: rgb(250, 200, 200);
+  color: rgb(255, 0, 0);
+  text-decoration: line-through;
+  text-decoration-color: rgb(255, 0, 0);
+}
+math, span.math {
+  font-family: serif;
+  font-style: italic;
+}
+ul {
+  list-style-type: "— ";
+}
+blockquote {
+  counter-reset: paragraph;
+}
+div.numbered, div.newnumbered {
+  margin-left: 2em;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+div.numbered:before, div.newnumbered:before {
+  position: absolute;
+  margin-left: -2em;
+  display-style: block;
+}
+div.numbered:before {
+  content: counter(paragraph);
+  counter-increment: paragraph;
+}
+div.newnumbered:before {
+  content: "�";
+}
+div.numbered ul, div.newnumbered ul {
+  counter-reset: list_item;
+}
+div.numbered li, div.newnumbered li {
+  margin-left: 3em;
+}
+div.numbered li:before, div.newnumbered li:before {
+  position: absolute;
+  margin-left: -4.8em;
+  display-style: block;
+}
+div.numbered li:before {
+  content: "(" counter(paragraph) "." counter(list_item) ")";
+  counter-increment: list_item;
+}
+div.newnumbered li:before {
+  content: "(�." counter(list_item) ")";
+  counter-increment: list_item;
+}
+</style>
+
