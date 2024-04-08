@@ -20,15 +20,13 @@ Boilerplate: style-syntax-highlighting off
 
 # Revision history # {#revisionhistory}
 
-## R0 ##
+## R0 ## {#R0}
 
 R0 published 2024-02-15 and reviewed by LEWG 2024-03-05.  Poll results follow.
 
 POLL: We want to make a breaking change to `dextents` to fix the issue presented in P2389R0.
 
-|  SF |   F |   N |   A |  SA |
-| --- | --- | --- | --- | --- |
-|   0 |   8 |   6 |   4 |   1 |
+Results (SF/F/N/A/SA): 0/8/6/4/1.
 
 * Attendance: 25
 * Author's Position: WF
@@ -36,34 +34,36 @@ POLL: We want to make a breaking change to `dextents` to fix the issue presented
 
 POLL: Vote once for your preferred name option:
 
-| Name | Votes |
-| --- | --- |
-| `std::dexts` | 0 |
-| `std::dims` | 11 |
-| Please explore a new name (in the reflector) | 2 |
+* `std::dexts`: 0 votes
+* `std::dims`: 11 votes
+* Please explore a new name (in the reflector): 2 votes
 
 POLL: Forward P2389R1 to LWG for C++26
 (which will be P2389R0 modified to add a new facility (`std::dims`) as suggested,
 but with the last param as the type defaulted to `std::size_t`)
 (to be confirmed with a library evolution electronic poll).
 
-|  SF |   F |   N |   A |  SA |
-| --- | --- | --- | --- | --- |
-|   5 |   8 |   2 |   0 |   0 |
+Results (SF/F/N/A/SA): 5/8/2/0/0.
 
 * Attendance: 26
 * Author's Position: SF
 * Outcome: Strong consensus in favor
 
-## R1 ##
+## R1 ## {#R1}
 
-R1 to be published 2024-03-12.
+R1, to be published 2024-03-12, includes the following changes.
 
 * Discuss and implement the above LEWG poll decisions
 
 * Add wording
 
-* Correct some typos in the nonwording section
+* Discuss freestanding implications (we think there are none)
+
+* Add link to implementation
+
+* Correct use of `extents` in nonwording sections
+
+* Add Mark Hoemmen to author list
 
 # Background # {#background}
 
@@ -78,14 +78,14 @@ The length of each dimension (the extent) of an `mdspan` are represented by an
   dynamically.  Use cases based on P0009R18's wording would look like this.
 
 ```c++
-// All static.
-mdspan<int, extents<64, 64, 64>> a(d);
+// All static extents
+mdspan<float, extents<64, 64, 64>> a(d);
 
-// All dynamic.
-mdspan<int, extents<dynamic_extent, dynamic_extent, dynamic_extent>> a(d, 64, 64, 64);
+// All dynamic extents
+mdspan<float, extents<dynamic_extent, dynamic_extent, dynamic_extent>> a(d, 64, 64, 64);
 
-// Mixed static and dynamic.
-mdspan<int, extents<64, dynamic_extent, 64>> a(d, 64);
+// Mixed static and dynamic extents
+mdspan<float, extents<64, dynamic_extent, 64>> a(d, 64);
 ```
 
 [[P2299R3]] sought to improve `mdspan`s usability
@@ -95,7 +95,8 @@ to make class template argument deduction (CTAD) work
 for `mdspan` and `extents`.
 
 ```
-mdspan a(d, 64, 64); // All dynamic.
+std::vector<float> storage(64 * 64);
+mdspan a(storage.data(), 64, 64); // All dynamic.
 ```
 
 However, CTAD does not help in all situations.
@@ -104,10 +105,10 @@ a class member or a function parameter.
 
 ```c++
 struct X {
-  std::mdspan<int, std::extents<std::dynamic_extent, std::dynamic_extent, std::dynamic_extent>> a;
+  std::mdspan<float, std::extents<std::dynamic_extent, std::dynamic_extent, std::dynamic_extent>> a;
 };
 
-void f(std::mdspan<int, std::extents<std::dynamic_extent, std::dynamic_extent, std::dynamic_extent>> a);
+void f(std::mdspan<float, std::extents<std::dynamic_extent, std::dynamic_extent, std::dynamic_extent>> a);
 ```
 
 To simplify these cases, [[P2299R3]] also added `dextents<N>`,
@@ -118,10 +119,10 @@ template <std::size_t N>
 using dextents = /* ... */;
 
 struct X {
-  std::mdspan<int, std::dextents<3>> a;
+  std::mdspan<float, std::dextents<3>> a;
 };
 
-void f(mdspan<int, std::dextents<3>> a);
+void f(mdspan<float, std::dextents<3>> a);
 ```
 
 # Problem # {#problem}
@@ -131,7 +132,7 @@ However, the signedness and size of the index type
 can affect performance in certain cases.
 So, [[P2553R1]] parameterized the index type used by `mdspan` and `extents`.
 As a part of this change, an index type template parameter was added to
-  `dextents`:
+  `dextents`.
 
 ```c++
 template <class IndexType, std::size_t Rank>
@@ -139,14 +140,14 @@ using dextents = /* ... */
 ```
 
 This change has made using `dextents` more verbose, which is unfortunate, as
-  the main purpose of `dextents` is to make common uses as simple as possible.
+  the main purpose of `dextents` was to make common uses as simple as possible.
 
 ```c++
 struct X {
-  std::mdspan<int, std::dextents<std::size_t, 3>> a;
+  std::mdspan<float, std::dextents<std::size_t, 3>> a;
 };
 
-void f(mdspan<int, std::dextents<std::size_t, 3>> a);
+void f(mdspan<float, std::dextents<std::size_t, 3>> a);
 ```
 
 Index type customization is an important feature for `mdspan` to support, but it
@@ -187,11 +188,11 @@ where CTAD could not be used would look like this.
 ```c++
 struct X {
   // Member declaration
-  std::mdspan<std::size_t, std::dextents<int, 3>> a;
+  std::mdspan<float, std::dextents<std::size_t, 3>> a;
 };
 
 // Function parameter
-void f(std::mdspan<std::size_t, std::dextents<int, 3>> a);
+void f(std::mdspan<float, std::dextents<std::size_t, 3>> a);
 ```
 
 After adding this alias, those two use cases would look like this.
@@ -199,11 +200,11 @@ After adding this alias, those two use cases would look like this.
 ```c++
 struct X {
   // Member declaration
-  std::mdspan<int, std::dims<3>> a;
+  std::mdspan<float, std::dims<3>> a;
 };
 
 // Function parameter
-void f(mdspan<int, std::dims<3>> a);
+void f(mdspan<float, std::dims<3>> a);
 ```
 
 The result is even more compact than `dextents`.
@@ -211,8 +212,11 @@ It also abbreviates a more familiar word, "dimensions."
 
 # Note on freestanding # {#freestanding}
 
-P2833R2 added an `// all freestanding` comment
-to the beginning of the [[mdspan.syn]] synopsis.
+<a href="https://wg21.link/P2833R2">P2833R2</a>,
+adopted in Kona 2023, added an `// all freestanding` comment
+to the beginning of the
+<a href="http://eel.is/c++draft/mdspan.syn">[mdspan.syn]</a>
+synopsis.
 In our view, our proposal would not change this freestanding status.
 
 # Implementation # {#implementation}
@@ -225,6 +229,9 @@ in the reference mdspan implementation.
 
 > Text in blockquotes is not proposed wording,
 > but rather instructions for generating proposed wording.
+> Markup `@_something something else_@` indicates that
+> the text "something something else" is to be rendered in italics,
+> without the additional `@_` or `_@`.
 >
 > Make the following changes to the latest C++ Working Draft as of the time of writing.
 > All wording is relative to the latest C++ Working Draft.
@@ -237,7 +244,7 @@ in the reference mdspan implementation.
 #define __cpp_lib_mdspan YYYYMML // also in <mdspan>
 ```
 
-> In the `<mdspan>` header synopsis [[mdspan.syn]],
+> In the `<mdspan>` header synopsis [mdspan.syn],
 > after the declaration of `dextents`,
 > add the following declaration of `dims`.
 
@@ -247,7 +254,7 @@ template<size_t Rank, class IndexType = size_t>
   using dims = @_see below_@;
 ```
 
-> Immediately after section [[mdspan.extents.dextents]],
+> Immediately after section [mdspan.extents.dextents],
 > insert a new section "Alias template `dims`" [mdspan.extents.dims]
 > with the following wording.
 
